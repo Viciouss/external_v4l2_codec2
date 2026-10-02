@@ -72,7 +72,7 @@ protected:
     // Get the buffer pool.
     std::unique_ptr<VideoFramePool> getVideoFramePool(const ui::Size& size,
                                                       HalPixelFormat pixelFormat,
-                                                      size_t numBuffers);
+                                                      size_t numBuffers, uint64_t usage);
     // Detect and report works with no-show frame, only used at VP8 and VP9.
     void detectNoShowFrameWorksAndReportIfFinished(const C2WorkOrdinalStruct& currOrdinal);
 

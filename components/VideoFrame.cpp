@@ -54,4 +54,12 @@ C2ConstGraphicBlock VideoFrame::getGraphicBlock() {
     return mGraphicBlock->share(C2Rect(mVisibleRect.width(), mVisibleRect.height()), C2Fence());
 }
 
+C2Acquirable<C2GraphicView> VideoFrame::map() {
+    return mGraphicBlock->map();
+}
+
+const C2Handle* VideoFrame::handle() const {
+    return mGraphicBlock->handle();
+}
+
 }  // namespace android

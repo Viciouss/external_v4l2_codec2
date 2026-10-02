@@ -95,6 +95,8 @@ const char* HalPixelFormatToString(HalPixelFormat format) {
         return "YV12";
     case HalPixelFormat::NV12:
         return "NV12";
+    case HalPixelFormat::BGRA_8888:
+        return "BGRA_8888";
     }
 }
 

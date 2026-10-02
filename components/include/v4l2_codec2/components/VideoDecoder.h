@@ -26,8 +26,11 @@ public:
     };
     static const char* DecodeStatusToString(DecodeStatus status);
 
+    // |usage| is how the decoder writes the graphic blocks: BufferUsage::VIDEO_DECODER when
+    // the decoder hardware writes them, else e.g. C2MemoryUsage::CPU_WRITE.
     using GetPoolCB = ::base::RepeatingCallback<std::unique_ptr<VideoFramePool>(
-            const ui::Size& size, HalPixelFormat pixelFormat, size_t numOutputBuffers)>;
+            const ui::Size& size, HalPixelFormat pixelFormat, size_t numOutputBuffers,
+            uint64_t usage)>;
     using DecodeCB = ::base::OnceCallback<void(DecodeStatus)>;
     using OutputCB = ::base::RepeatingCallback<void(std::unique_ptr<VideoFrame>)>;
     using ErrorCB = ::base::RepeatingCallback<void()>;

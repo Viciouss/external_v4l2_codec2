@@ -25,6 +25,7 @@ cc_library {
         "V4L2DevicePoller.cpp",
         "V4L2Encoder.cpp",
         "V4L2EncodeComponent.cpp",
+        "V4L2FimcConverter.cpp",
     ],
     export_include_dirs: [
         "include",
@@ -35,6 +36,7 @@ cc_library {
     ],
     shared_libs: [
         "android.hardware.graphics.common@1.0",
+        "libbase",
         "libc2plugin_store",
         "libchrome",
         "libcodec2_soft_common",

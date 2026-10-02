@@ -68,11 +68,10 @@ std::optional<uint32_t> VideoFramePool::getBufferIdFromGraphicBlock(C2BlockPool&
 // static
 std::unique_ptr<VideoFramePool> VideoFramePool::Create(
         std::shared_ptr<C2BlockPool> blockPool, const size_t numBuffers, const ui::Size& size,
-        HalPixelFormat pixelFormat, bool isSecure,
+        HalPixelFormat pixelFormat, bool isSecure, uint64_t usage,
         scoped_refptr<::base::SequencedTaskRunner> taskRunner) {
     ALOG_ASSERT(blockPool != nullptr);
 
-    uint64_t usage = static_cast<uint64_t>(BufferUsage::VIDEO_DECODER);
     if (isSecure) {
         usage |= C2MemoryUsage::READ_PROTECTED;
     } else if (blockPool->getAllocatorId() == C2PlatformAllocatorStore::GRALLOC) {
@@ -115,6 +114,10 @@ bool VideoFramePool::initialize() {
     mFetchWeakThis = mFetchWeakThisFactory.GetWeakPtr();
 
     return true;
+}
+
+bool VideoFramePool::isByteBufferMode() const {
+    return mBlockPool->getAllocatorId() == C2PlatformAllocatorStore::GRALLOC;
 }
 
 VideoFramePool::~VideoFramePool() {

@@ -992,9 +992,10 @@ bool V4L2Encoder::dequeueOutputBuffer() {
         memset(&cmd, 0, sizeof(v4l2_encoder_cmd));
         cmd.cmd = V4L2_ENC_CMD_START;
         if (mDevice->ioctl(VIDIOC_ENCODER_CMD, &cmd) != 0) {
-            ALOGE("Failed to restart encoder after draining (V4L2_ENC_CMD_START)");
-            onError();
-            return false;
+            // Some drivers (e.g. s5p-mfc) can drain but not restart an instance. Only a client
+            // encoding more frames after end-of-stream needs this, and it will get an error then;
+            // a recording ends here.
+            ALOGW("Failed to restart encoder after draining (V4L2_ENC_CMD_START)");
         }
     }
 

@@ -17,6 +17,7 @@
 #include <linux/media.h>
 #include <linux/videodev2.h>
 #include <poll.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
@@ -155,7 +156,6 @@ V4L2Buffer::V4L2Buffer(scoped_refptr<V4L2Device> device, enum v4l2_buf_type type
     mV4l2Buffer.index = bufferId;
     mV4l2Buffer.type = type;
     mV4l2Buffer.memory = memory;
-    mV4l2Buffer.memory = V4L2_MEMORY_DMABUF;
     mPlaneMappings.resize(mV4l2Buffer.length);
 }
 
@@ -2482,9 +2482,24 @@ const V4L2Device::DeviceInfos& V4L2Device::getDeviceInfosForType(V4L2Device::Typ
         return sNoDevices;
     }
 
+    // Exynos 4 registers FIMC, FIMC-LITE and JPEG nodes before the MFC, which
+    // ends up at /dev/video10 and up, so scan past the first ten nodes.
     DeviceInfos deviceInfos;
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 32; ++i) {
         std::string path = base::StringPrintf("%s%d", kVideoDevicePattern, i);
+
+        // Opening a media-controller capture node (e.g. exynos4-is "fimc.1.capture") powers up
+        // the camera pipeline behind it, and may even be in use by the camera HAL. Codecs are
+        // never capture nodes, so skip them without opening.
+        char name[64] = {};
+        std::string namePath = base::StringPrintf("/sys/class/video4linux/video%d/name", i);
+        if (FILE* nameFile = fopen(namePath.c_str(), "re")) {
+            fgets(name, sizeof(name), nameFile);
+            fclose(nameFile);
+        }
+        if (strstr(name, ".capture")) {
+            continue;
+        }
 
         scoped_refptr<V4L2Device> device = V4L2Device::create();
         if (!device->openDevicePath(path, type)) {

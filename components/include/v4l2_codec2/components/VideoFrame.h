@@ -35,6 +35,12 @@ public:
     // Get the read-only C2GraphicBlock, should be called after calling setVisibleRect().
     C2ConstGraphicBlock getGraphicBlock();
 
+    // Map the whole C2GraphicBlock for writing the frame with the CPU.
+    C2Acquirable<C2GraphicView> map();
+
+    // The Codec2 handle of the C2GraphicBlock, which also carries its gralloc metadata.
+    const C2Handle* handle() const;
+
 private:
     VideoFrame(std::shared_ptr<C2GraphicBlock> block, std::vector<int> fds);
 

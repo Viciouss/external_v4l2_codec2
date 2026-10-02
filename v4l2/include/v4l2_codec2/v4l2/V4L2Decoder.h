@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -25,6 +26,7 @@
 #include <v4l2_codec2/components/VideoFramePool.h>
 #include <v4l2_codec2/plugin_store/DmabufHelpers.h>
 #include <v4l2_codec2/v4l2/V4L2Device.h>
+#include <v4l2_codec2/v4l2/V4L2FimcConverter.h>
 
 namespace android {
 
@@ -49,6 +51,9 @@ public:
 
 private:
     static constexpr size_t kNumInputBuffers = 16;
+    // Input buffers are copied into driver-allocated memory in tiled output mode. The frames are
+    // decoded one at a time, so fewer buffers suffice.
+    static constexpr size_t kNumTiledInputBuffers = 6;
 
     enum class State {
         Idle,  // Not received any decode buffer after initialized, flushed, or drained.
@@ -88,9 +93,27 @@ private:
     bool dequeueResolutionChangeEvent();
     bool changeResolution();
     bool setupOutputFormat(const ui::Size& size);
+    // Finishes the pending drain, once all decoded frames have been sent to the client.
+    void finishDrain();
 
     void tryFetchVideoFrame();
     void onVideoFrameReady(std::optional<VideoFramePool::FrameWithBlockId> frameWithBlockId);
+
+    // Tiled output mode, see |mTiledOutput|.
+    // Sets up the output queue from the stream header, once an input buffer has been queued.
+    void setupTiledOutput();
+    // Queues all free output buffers to the device.
+    bool queueTiledOutputBuffers();
+    // Exports the output buffers' planes as DMA-bufs for |mFimc|.
+    bool exportTiledOutputBuffers();
+    // Creates |mVideoFramePool| for FIMC or CPU conversion of the tiled frames.
+    bool setupTiledPool();
+    // Converts decoded buffers into free frames and sends them to the client.
+    void processDecodedBuffers();
+    // Converts |buffer| into |frame| with |mFimc|.
+    bool convertTiledFrame(const V4L2ReadableBuffer& buffer, VideoFrame* frame, uint32_t blockId);
+    // Detiles |buffer| into |frame| with the CPU.
+    bool copyTiledFrame(const V4L2ReadableBuffer& buffer, VideoFrame* frame);
 
     std::optional<size_t> getNumOutputBuffers();
     std::optional<struct v4l2_format> getFormatInfo();
@@ -151,6 +174,39 @@ private:
     // buffers. This maintains an association between a block ID and a specific
     // V4L2 buffer index.
     std::map<size_t, size_t> mBlockIdToV4L2Id;
+
+    // The device only outputs V4L2_PIX_FMT_NV12MT (Samsung MFC 5.x), which nothing else in the
+    // system can read. Both queues then use MMAP buffers: input is copied in, and decoded frames
+    // are detiled by the CPU into graphic blocks, so V4L2 buffers never leave the decoder.
+    bool mTiledOutput = false;
+    // The output queue must be set up from the stream header after the next input buffer.
+    bool mNeedOutputSetup = false;
+    // A resolution change arrived while decoded frames were still waiting for graphic blocks.
+    bool mPendingResolutionChange = false;
+    // The drain finished while decoded frames were still waiting for graphic blocks.
+    bool mPendingDrainDone = false;
+    // Format of the output queue in tiled output mode.
+    struct v4l2_format mTiledFormat;
+    // Decoded output buffers waiting for a graphic block.
+    std::queue<V4L2ReadableBufferRef> mDecodedBuffers;
+    // Graphic blocks fetched from |mVideoFramePool| and not filled yet, with their block ids.
+    std::queue<std::pair<std::unique_ptr<VideoFrame>, uint32_t>> mFreeFrames;
+
+    // FIMC mem-to-mem device converting the tiled frames in hardware, if available. Otherwise
+    // the CPU detiles them.
+    std::unique_ptr<V4L2FimcConverter> mFimc;
+    // DMA-bufs of the luma and chroma plane of each output buffer, for |mFimc|.
+    std::vector<std::array<::base::ScopedFD, 2>> mOutputDmabufs;
+    // |mVideoFramePool| is written by |mFimc|, in this V4L2 pixel format.
+    bool mUseFimc = false;
+    uint32_t mFimcFourcc = 0;
+    // Graphic block line stride in pixels |mFimc| is configured for, 0 before the first frame.
+    uint32_t mFimcStride = 0;
+    // Part of the visible rectangle |mFimc| writes, at the top left of the blocks.
+    Rect mFimcRect;
+    // |mFimc| output buffer id of each graphic block, so each block is mapped only once.
+    std::map<uint32_t, size_t> mFimcSlots;
+    size_t mFimcSlotCount = 0;
 
     State mState = State::Idle;
 

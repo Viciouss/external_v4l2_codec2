@@ -175,7 +175,8 @@ c2_status_t DecodeComponent::start() {
 
 std::unique_ptr<VideoFramePool> DecodeComponent::getVideoFramePool(const ui::Size& size,
                                                                    HalPixelFormat pixelFormat,
-                                                                   size_t numBuffers) {
+                                                                   size_t numBuffers,
+                                                                   uint64_t usage) {
     ALOGV("%s()", __func__);
     ALOG_ASSERT(mDecoderTaskRunner->RunsTasksInCurrentSequence());
 
@@ -206,7 +207,7 @@ std::unique_ptr<VideoFramePool> DecodeComponent::getVideoFramePool(const ui::Siz
     }
 
     return VideoFramePool::Create(std::move(blockPool), numBuffers, size, pixelFormat, mIsSecure,
-                                  mDecoderTaskRunner);
+                                  usage, mDecoderTaskRunner);
 }
 
 c2_status_t DecodeComponent::stop() {

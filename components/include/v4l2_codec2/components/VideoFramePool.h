@@ -32,9 +32,13 @@ public:
 
     static std::unique_ptr<VideoFramePool> Create(
             std::shared_ptr<C2BlockPool> blockPool, const size_t numBuffers, const ui::Size& size,
-            HalPixelFormat pixelFormat, bool isSecure,
+            HalPixelFormat pixelFormat, bool isSecure, uint64_t usage,
             scoped_refptr<::base::SequencedTaskRunner> taskRunner);
     ~VideoFramePool();
+
+    // True if the frames go to the client as byte buffers rather than to a surface: they must
+    // then be YUV.
+    bool isByteBufferMode() const;
 
     // Get a VideoFrame instance, which will be passed via |cb|.
     // If any error occurs, then nullptr will be passed via |cb|.

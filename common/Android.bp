@@ -24,6 +24,7 @@ cc_library {
         "H264NalParser.cpp",
         "HEVCNalParser.cpp",
         "NalParser.cpp",
+        "Nv12mtDetiler.cpp",
         "VideoTypes.cpp",
         "VideoPixelFormat.cpp",
     ],
